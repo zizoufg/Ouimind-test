@@ -4,6 +4,7 @@ const express = require("express");
 const { spawn } = require('child_process');
 // import mysql
 const mysql = require('mysql'); 
+const consul = require('consul'); // Import the consul library
 
 //CORS
 const cors = require('cors');
@@ -35,14 +36,32 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
 
+let mysqlConnectorInstances =  parseInt(process.env.VARIABLE_NAME);
 
-// const config = {
-//     host: 'localhost',
-//     user: 'root',
-//     password: 'aZFG1111*',
-//     database: 'product'
-// };
 
+// Initialize Consul client
+const consulClient = new consul({ host: 'consul-ui', port: 90 }); // Use the service name for Consul
+
+// Function to register service with Consul
+async function registerServiceWithConsul() {
+    try {
+        await consulClient.agent.service.register({
+            name: `mysql-connector-${mysqlConnectorInstances}`, // Service name
+            address: `mysql-connector-${mysqlConnectorInstances}-service`, // Use the service name for your microservice
+            port:  80+ mysqlConnectorInstances, // Service port (the port exposed externally)
+            check: {
+                http: `http://mysql-connector-${mysqlConnectorInstances}-service:8${mysqlConnectorInstances}/test`, // Health check endpoint
+                interval: '10s' // Check every 10 seconds
+            }
+        });
+        console.log('Microservice registered with Consul');
+    } catch (err) {
+        console.error('Error registering service with Consul:', err);
+    }
+}
+
+// Register service with Consul on startup
+registerServiceWithConsul();
 
 
 // API endpoint for dynamic data transformation
@@ -74,9 +93,11 @@ app.get("/api/connect", (req, res) =>{
     
 });
 });
-app.get("/test",(req,res)=>{
-    res.json({message:"hello"});
-    console.log("hello");
-})
+app.get("/test", (req, res) => {
+    res.sendStatus(200); // Send HTTP 200 OK status
+});
   
 module.exports = app;
+app.get("/",(req,res)=>{
+    res.sendStatus(200);
+})
