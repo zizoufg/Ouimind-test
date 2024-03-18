@@ -36,7 +36,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
 
-let mysqlConnectorInstances =  parseInt(process.env.VARIABLE_NAME);
+let INSTANCE_ID =  process.env.INSTANCE_ID;
+let  servicePort= process.env.SERVICE_PORT;
+console.log(INSTANCE_ID,servicePort);
 
 
 // Initialize Consul client
@@ -46,11 +48,11 @@ const consulClient = new consul({ host: 'consul-ui', port: 90 }); // Use the ser
 async function registerServiceWithConsul() {
     try {
         await consulClient.agent.service.register({
-            name: `mysql-connector-${mysqlConnectorInstances}`, // Service name
-            address: `mysql-connector-${mysqlConnectorInstances}-service`, // Use the service name for your microservice
-            port:  80+ mysqlConnectorInstances, // Service port (the port exposed externally)
+            name: `mysql-connector-${INSTANCE_ID}`, // Service name
+            address: `mysql-connector-${INSTANCE_ID}-service`, // Use the service name for your microservice
+            port:  parseInt(servicePort), // Service port (the port exposed externally)
             check: {
-                http: `http://mysql-connector-${mysqlConnectorInstances}-service:8${mysqlConnectorInstances}/test`, // Health check endpoint
+                http: `http://mysql-connector-${INSTANCE_ID}-service:${servicePort}/test`, // Health check endpoint
                 interval: '10s' // Check every 10 seconds
             }
         });
